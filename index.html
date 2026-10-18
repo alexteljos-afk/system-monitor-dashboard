@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard | Monitor de Sistema</title>
+    <!-- Importamos la librería Chart.js desde su CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: #1e1e2f; color: white; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #00d2ff; }
+        .container { display: flex; justify-content: space-around; flex-wrap: wrap; margin-top: 40px; }
+        .card { background-color: #2a2a40; width: 300px; padding: 20px; border-radius: 12px; box-shadow: 0 8px 16px rgba(0,0,0,0.3); text-align: center; margin-bottom: 20px; }
+        .data-text { font-size: 14px; color: #a0a0b0; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1>Monitor de Recursos en Tiempo Real</h1>
+    
+    <div class="container">
+        <!-- Tarjeta CPU -->
+        <div class="card">
+            <h2>CPU</h2>
+            <canvas id="cpuChart"></canvas>
+            <div class="data-text" id="cpuText">Cargando...</div>
+        </div>
+
+        <!-- Tarjeta RAM -->
+        <div class="card">
+            <h2>Memoria RAM</h2>
+            <canvas id="ramChart"></canvas>
+            <div class="data-text" id="ramText">Cargando...</div>
+        </div>
+
+        <!-- Tarjeta Disco -->
+        <div class="card">
+            <h2>Disco Duro</h2>
+            <canvas id="diskChart"></canvas>
+            <div class="data-text" id="diskText">Cargando...</div>
+        </div>
+    </div>
+
+    <script>
+        // Función para crear gráficos tipo "Donut"
+        function createChart(ctxId, color) {
+            return new Chart(document.getElementById(ctxId), {
+                type: 'doughnut',
+                data: {
+                    labels: ['En Uso (%)', 'Libre (%)'],
+                    datasets: [{
+                        data: [0, 100],
+                        backgroundColor: [color, '#3f3f5a'],
+                        borderWidth: 0
+                    }]
+                },
+                options: { responsive: true, cutout: '75%', animation: { duration: 500 } }
+            });
+        }
+
+        // Inicializamos los 3 gráficos con diferentes colores
+        const cpuChart = createChart('cpuChart', '#00d2ff');
+        const ramChart = createChart('ramChart', '#ff007c');
+        const diskChart = createChart('diskChart', '#00e676');
+
+        // Función que llama a tu API de Python y actualiza los gráficos
+        async function fetchSystemData() {
+            try {
+                // Hacemos la petición a tu servidor local de FastAPI
+                const response = await fetch('http://127.0.0.1:8000/api/status');
+                const data = await response.json();
+
+                // Actualizar gráfico de CPU
+                cpuChart.data.datasets[0].data = [data.cpu_percent, 100 - data.cpu_percent];
+                cpuChart.update();
+                document.getElementById('cpuText').innerText = `Uso de CPU: ${data.cpu_percent}%`;
+
+                // Actualizar gráfico de RAM
+                ramChart.data.datasets[0].data = [data.ram_percent, 100 - data.ram_percent];
+                ramChart.update();
+                document.getElementById('ramText').innerText = `En uso: ${data.ram_used_gb} GB / Total: ${data.ram_total_gb} GB`;
+
+                // Actualizar gráfico de Disco
+                diskChart.data.datasets[0].data = [data.disk_percent, 100 - data.disk_percent];
+                diskChart.update();
+                document.getElementById('diskText').innerText = `Libre: ${data.disk_free_gb} GB`;
+
+            } catch (error) {
+                console.error("Error al conectar con la API:", error);
+            }
+        }
+
+        // Ejecutar la actualización cada 2 segundos (2000 milisegundos)
+        setInterval(fetchSystemData, 2000);
+        fetchSystemData(); // Primera llamada inmediata
+    </script>
+</body>
+</html>
